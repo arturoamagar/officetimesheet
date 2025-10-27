@@ -48,13 +48,11 @@
         
         .file-input-wrapper {
             position: relative;
-            overflow: hidden;
             display: inline-block;
         }
         
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
+        #csvFile {
+            display: none;
         }
         
         .btn {
@@ -81,6 +79,7 @@
             color: #667eea;
             font-weight: 500;
             margin-left: 10px;
+            display: inline-block;
         }
         
         .stats-grid {
@@ -138,29 +137,6 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             overflow-x: auto;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th {
-            background: #f8f9fa;
-            color: #333;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid #e0e0e0;
-        }
-        
-        td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        tr:hover {
-            background: #f8f9fa;
         }
         
         .filters-section {
@@ -307,10 +283,10 @@
         <header>
             <h1>📊 Activity Dashboard</h1>
             <div class="controls">
-                <label class="file-input-wrapper">
-                    <button class="btn btn-upload">📁 Load CSV File</button>
+                <div class="file-input-wrapper">
+                    <button class="btn btn-upload" onclick="document.getElementById('csvFile').click()">📁 Load CSV File</button>
                     <input type="file" id="csvFile" accept=".csv" />
-                </label>
+                </div>
                 <span class="file-name" id="fileName">Default sample data loaded</span>
             </div>
         </header>
@@ -320,8 +296,9 @@
 
     <script>
         let csvData = [];
+        let chartsInstance = { userChart: null, dateChart: null };
         
-        // Initialize with sample data
+        // Sample data
         const sampleData = `User,Login Time,Logout Time,Work Time
 adrian,2025-10-20 08:09:00,2025-10-20 17:02:00,08:53
 adrian,2025-10-21 08:30:00,2025-10-21 17:04:00,08:34
@@ -354,6 +331,7 @@ roberto,2025-10-21 08:22:00,2025-10-21 17:00:00,08:38
 sergio,2025-10-20 08:27:00,2025-10-20 16:47:00,08:20
 sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
 
+        // File upload handler
         document.getElementById('csvFile').addEventListener('change', handleFileUpload);
         
         function handleFileUpload(e) {
@@ -366,7 +344,7 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
                         skipEmptyLines: true,
                         complete: (results) => {
                             csvData = results.data;
-                            document.getElementById('fileName').textContent = `✓ ${file.name}`;
+                            document.getElementById('fileName').textContent = `✅ ${file.name}`;
                             renderDashboard();
                         },
                         error: (error) => {
@@ -380,7 +358,7 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
         
         function timeToMinutes(timeStr) {
             if (!timeStr || timeStr === '-') return 0;
-            const parts = timeStr.split(':');
+            const parts = timeStr.trim().split(':');
             return parseInt(parts[0]) * 60 + parseInt(parts[1]);
         }
         
@@ -391,19 +369,16 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
         }
         
         function formatDateToUSA(dateStr) {
-            // Convert from YYYY-MM-DD to MM/DD/YYYY
             const parts = dateStr.split('-');
             return `${parts[1]}/${parts[2]}/${parts[0]}`;
         }
         
         function renderDashboard() {
-            // Calculate metrics
             const validData = csvData.filter(row => row['Work Time'] && row['Work Time'] !== '-');
             const totalWorkMinutes = validData.reduce((sum, row) => sum + timeToMinutes(row['Work Time']), 0);
             const avgWorkMinutes = validData.length > 0 ? totalWorkMinutes / validData.length : 0;
             const uniqueUsers = new Set(csvData.map(row => row['User'].toLowerCase())).size;
             
-            // Group by user
             const userStats = {};
             validData.forEach(row => {
                 const user = row['User'].toLowerCase();
@@ -417,7 +392,6 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
             const users = Object.keys(userStats).sort();
             const userTotals = users.map(u => (userStats[u].total / 60).toFixed(2));
             
-            // Group by date
             const dateStats = {};
             validData.forEach(row => {
                 const date = row['Login Time'].split(' ')[0];
@@ -429,7 +403,10 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
             });
             
             const dates = Object.keys(dateStats).sort();
+            const datesUSA = dates.map(d => formatDateToUSA(d));
             const dateTotals = dates.map(d => (dateStats[d].total / 60).toFixed(2));
+            
+            const html = `
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Total Users</div>
@@ -489,36 +466,28 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
             
             document.getElementById('content').innerHTML = html;
             
-            // Setup filter event listeners
             const userFilterEl = document.getElementById('userFilter');
             const dateFilterEl = document.getElementById('dateFilter');
             const hoursFilterEl = document.getElementById('hoursFilter');
             
             function applyFilters() {
                 const selectedUser = userFilterEl.value.toLowerCase();
-                const selectedDateUSA = dateFilterEl.value;
+                const selectedDate = dateFilterEl.value;
                 const minHours = parseFloat(hoursFilterEl.value) || 0;
-                
-                // Convert USA format back to YYYY-MM-DD for comparison
-                let selectedDateISO = '';
-                if (selectedDateUSA) {
-                    const parts = selectedDateUSA.split('/');
-                    selectedDateISO = `${parts[2]}-${parts[0]}-${parts[1]}`;
-                }
                 
                 let filtered = validData.filter(row => {
                     const userMatch = !selectedUser || row['User'].toLowerCase() === selectedUser;
-                    const dateMatch = !selectedDateISO || row['Login Time'].startsWith(selectedDateISO);
+                    const dateMatch = !selectedDate || row['Login Time'].startsWith(selectedDate);
                     const workHours = timeToMinutes(row['Work Time']) / 60;
                     const hoursMatch = workHours >= minHours;
                     
                     return userMatch && dateMatch && hoursMatch;
                 });
                 
-                renderRecords(filtered, selectedUser, selectedDateISO, minHours);
+                renderRecords(filtered);
             }
             
-            function renderRecords(records, selectedUser, selectedDate, minHours) {
+            function renderRecords(records) {
                 const container = document.getElementById('recordsContainer');
                 const statsDiv = document.getElementById('tableStats');
                 
@@ -531,7 +500,7 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
                 const totalMinutes = records.reduce((sum, row) => sum + timeToMinutes(row['Work Time']), 0);
                 statsDiv.textContent = `📊 Showing ${records.length} record${records.length !== 1 ? 's' : ''} | Total Work Time: ${minutesToTime(totalMinutes)} (${(totalMinutes / 60).toFixed(1)} hours)`;
                 
-                container.innerHTML = records.map((row, index) => {
+                container.innerHTML = records.map((row) => {
                     const workHours = timeToMinutes(row['Work Time']) / 60;
                     const date = row['Login Time'].split(' ')[0];
                     const dateUSA = formatDateToUSA(date);
@@ -570,13 +539,14 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
             dateFilterEl.addEventListener('change', applyFilters);
             hoursFilterEl.addEventListener('change', applyFilters);
             
-            // Initial render
-            renderRecords(validData, '', '', 0);
+            renderRecords(validData);
             
-            // Render charts
             setTimeout(() => {
+                if (chartsInstance.userChart) chartsInstance.userChart.destroy();
+                if (chartsInstance.dateChart) chartsInstance.dateChart.destroy();
+                
                 const ctxUser = document.getElementById('userChart').getContext('2d');
-                new Chart(ctxUser, {
+                chartsInstance.userChart = new Chart(ctxUser, {
                     type: 'bar',
                     data: {
                         labels: users,
@@ -591,17 +561,13 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: {
-                            legend: { display: true }
-                        },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
+                        plugins: { legend: { display: true } },
+                        scales: { y: { beginAtZero: true } }
                     }
                 });
                 
                 const ctxDate = document.getElementById('dateChart').getContext('2d');
-                new Chart(ctxDate, {
+                chartsInstance.dateChart = new Chart(ctxDate, {
                     type: 'line',
                     data: {
                         labels: datesUSA,
@@ -618,15 +584,11 @@ sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: {
-                            legend: { display: true }
-                        },
-                        scales: {
-                            y: { beginAtZero: true }
-                        }
+                        plugins: { legend: { display: true } },
+                        scales: { y: { beginAtZero: true } }
                     }
                 });
-            }, 0);
+            }, 100);
         }
         
         // Load sample data on startup
