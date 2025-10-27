@@ -228,7 +228,7 @@
         <div class="hero">
             <h1>📊 Activity Dashboard</h1>
             <p>Professional analytics and employee activity tracking with real-time insights</p>
-            <a href="dashboard.html" class="cta-button">🚀 Go to Dashboard</a>
+            <a href="https://arturoamagar.github.io/officetimesheet/activity_dashboard%20(1).html" class="cta-button">🚀 Go to Dashboard</a>
         </div>
         
         <!-- Features Grid -->
