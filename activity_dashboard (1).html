@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-upload {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .file-name {
+            color: #667eea;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-label {
+            color: #999;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            color: #667eea;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            color: #333;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .table-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8f9fa;
+            color: #333;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .filters-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+        
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .table-stats {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .records-container {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .record-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .record-card:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .record-user {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .record-date {
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        .record-time-badge {
+            background: #667eea;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .record-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .detail-label {
+            color: #999;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 1em;
+        }
+        
+        .no-records {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .stat-value {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Activity Dashboard</h1>
+            <div class="controls">
+                <label class="file-input-wrapper">
+                    <button class="btn btn-upload">📁 Load CSV File</button>
+                    <input type="file" id="csvFile" accept=".csv" />
+                </label>
+                <span class="file-name" id="fileName">Default sample data loaded</span>
+            </div>
+        </header>
+        
+        <div id="content"></div>
+    </div>
+
+    <script>
+        let csvData = [];
+        
+        // Initialize with sample data
+        const sampleData = `User,Login Time,Logout Time,Work Time
+adrian,2025-10-20 08:09:00,2025-10-20 17:02:00,08:53
+adrian,2025-10-21 08:30:00,2025-10-21 17:04:00,08:34
+ajimenez,2025-10-20 08:38:00,2025-10-20 16:56:00,08:16
+ajimenez,2025-10-21 08:43:00,2025-10-21 16:46:00,08:03
+Andrea,2025-10-20 08:38:00,2025-10-20 16:55:00,08:17
+Andrea,2025-10-21 08:37:00,2025-10-21 19:28:00,10:51
+brenda,2025-10-20 08:43:00,2025-10-20 17:07:00,08:24
+brenda,2025-10-21 08:37:00,2025-10-21 17:16:00,08:39
+carolina,2025-10-20 09:23:00,2025-10-20 16:59:00,07:36
+carolina,2025-10-21 08:40:00,2025-10-21 17:03:00,08:23
+helen,2025-10-20 08:29:00,2025-10-20 16:36:00,08:07
+helen,2025-10-21 08:49:00,2025-10-21 16:10:00,07:21
+jorge,2025-10-20 10:55:00,2025-10-20 17:04:00,06:09
+jorge,2025-10-21 08:38:00,2025-10-21 17:15:00,08:37
+juan,2025-10-20 08:46:00,2025-10-20 17:07:00,08:21
+juan,2025-10-21 08:48:00,2025-10-21 17:11:00,08:23
+laura,2025-10-20 08:46:00,2025-10-20 17:07:00,08:21
+laura,2025-10-21 08:47:00,2025-10-21 16:55:00,08:08
+manuel,2025-10-20 07:12:00,2025-10-20 21:02:00,13:50
+manuel,2025-10-21 08:05:00,2025-10-21 20:41:00,12:36
+martin,2025-10-20 08:41:00,2025-10-20 17:02:00,08:21
+martin,2025-10-21 08:44:00,2025-10-21 17:03:00,08:19
+pedro,2025-10-20 08:31:00,2025-10-20 17:01:00,08:30
+pedro,2025-10-21 08:25:00,2025-10-21 16:59:00,08:34
+rafael,2025-10-20 10:08:00,2025-10-20 16:28:00,06:20
+rafael,2025-10-21 08:04:00,2025-10-21 16:07:00,08:03
+roberto,2025-10-20 08:19:00,2025-10-20 16:48:00,08:29
+roberto,2025-10-21 08:22:00,2025-10-21 17:00:00,08:38
+sergio,2025-10-20 08:27:00,2025-10-20 16:47:00,08:20
+sergio,2025-10-21 07:58:00,2025-10-21 16:47:00,08:47`;
+
+        document.getElementById('csvFile').addEventListener('change', handleFileUpload);
+        
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    Papa.parse(event.target.result, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            csvData = results.data;
+                            document.getElementById('fileName').textContent = `✓ ${file.name}`;
+                            renderDashboard();
+                        },
+                        error: (error) => {
+                            alert('Error parsing CSV: ' + error.message);
+                        }
+                    });
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        function timeToMinutes(timeStr) {
+            if (!timeStr || timeStr === '-') return 0;
+            const parts = timeStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+        
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+        
+        function formatDateToUSA(dateStr) {
+            // Convert from YYYY-MM-DD to MM/DD/YYYY
+            const parts = dateStr.split('-');
+            return `${parts[1]}/${parts[2]}/${parts[0]}`;
+        }
+        
+        function renderDashboard() {
+            // Calculate metrics
+            const validData = csvData.filter(row => row['Work Time'] && row['Work Time'] !== '-');
+            const totalWorkMinutes = validData.reduce((sum, row) => sum + timeToMinutes(row['Work Time']), 0);
+            const avgWorkMinutes = validData.length > 0 ? totalWorkMinutes / validData.length : 0;
+            const uniqueUsers = new Set(csvData.map(row => row['User'].toLowerCase())).size;
+            
+            // Group by user
+            const userStats = {};
+            validData.forEach(row => {
+                const user = row['User'].toLowerCase();
+                if (!userStats[user]) {
+                    userStats[user] = { total: 0, count: 0 };
+                }
+                userStats[user].total += timeToMinutes(row['Work Time']);
+                userStats[user].count += 1;
+            });
+            
+            const users = Object.keys(userStats).sort();
+            const userTotals = users.map(u => (userStats[u].total / 60).toFixed(2));
+            
+            // Group by date
+            const dateStats = {};
+            validData.forEach(row => {
+                const date = row['Login Time'].split(' ')[0];
+                if (!dateStats[date]) {
+                    dateStats[date] = { total: 0, count: 0 };
+                }
+                dateStats[date].total += timeToMinutes(row['Work Time']);
+                dateStats[date].count += 1;
+            });
+            
+            const dates = Object.keys(dateStats).sort();
+            const dateTotals = dates.map(d => (dateStats[d].total / 60).toFixed(2));
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value">${uniqueUsers}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Records</div>
+                        <div class="stat-value">${validData.length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average Work Time</div>
+                        <div class="stat-value">${minutesToTime(Math.round(avgWorkMinutes))}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Work Hours</div>
+                        <div class="stat-value">${(totalWorkMinutes / 60).toFixed(1)}h</div>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Work Time by User</div>
+                        <canvas id="userChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Work Time by Date</div>
+                        <canvas id="dateChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <div class="chart-title">Detailed Records</div>
+                    <div class="filters-section">
+                        <div class="filter-group">
+                            <label>Filter by User:</label>
+                            <select id="userFilter">
+                                <option value="">All Users</option>
+                                ${users.map(u => `<option value="${u}">${u}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Filter by Date:</label>
+                            <select id="dateFilter">
+                                <option value="">All Dates</option>
+                                ${dates.map((d, i) => `<option value="${d}">${datesUSA[i]}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Min Work Hours:</label>
+                            <input type="number" id="hoursFilter" min="0" max="24" step="0.5" placeholder="0">
+                        </div>
+                    </div>
+                    <div id="tableStats" class="table-stats"></div>
+                    <div id="recordsContainer" class="records-container"></div>
+                </div>
+            `;
+            
+            document.getElementById('content').innerHTML = html;
+            
+            // Setup filter event listeners
+            const userFilterEl = document.getElementById('userFilter');
+            const dateFilterEl = document.getElementById('dateFilter');
+            const hoursFilterEl = document.getElementById('hoursFilter');
+            
+            function applyFilters() {
+                const selectedUser = userFilterEl.value.toLowerCase();
+                const selectedDateUSA = dateFilterEl.value;
+                const minHours = parseFloat(hoursFilterEl.value) || 0;
+                
+                // Convert USA format back to YYYY-MM-DD for comparison
+                let selectedDateISO = '';
+                if (selectedDateUSA) {
+                    const parts = selectedDateUSA.split('/');
+                    selectedDateISO = `${parts[2]}-${parts[0]}-${parts[1]}`;
+                }
+                
+                let filtered = validData.filter(row => {
+                    const userMatch = !selectedUser || row['User'].toLowerCase() === selectedUser;
+                    const dateMatch = !selectedDateISO || row['Login Time'].startsWith(selectedDateISO);
+                    const workHours = timeToMinutes(row['Work Time']) / 60;
+                    const hoursMatch = workHours >= minHours;
+                    
+                    return userMatch && dateMatch && hoursMatch;
+                });
+                
+                renderRecords(filtered, selectedUser, selectedDateISO, minHours);
+            }
+            
+            function renderRecords(records, selectedUser, selectedDate, minHours) {
+                const container = document.getElementById('recordsContainer');
+                const statsDiv = document.getElementById('tableStats');
+                
+                if (records.length === 0) {
+                    container.innerHTML = '<div class="no-records">No records found with the selected filters</div>';
+                    statsDiv.textContent = 'No matching records';
+                    return;
+                }
+                
+                const totalMinutes = records.reduce((sum, row) => sum + timeToMinutes(row['Work Time']), 0);
+                statsDiv.textContent = `📊 Showing ${records.length} record${records.length !== 1 ? 's' : ''} | Total Work Time: ${minutesToTime(totalMinutes)} (${(totalMinutes / 60).toFixed(1)} hours)`;
+                
+                container.innerHTML = records.map((row, index) => {
+                    const workHours = timeToMinutes(row['Work Time']) / 60;
+                    const date = row['Login Time'].split(' ')[0];
+                    const dateUSA = formatDateToUSA(date);
+                    const loginTime = row['Login Time'].split(' ')[1];
+                    const logoutTime = row['Logout Time'] && row['Logout Time'] !== '-' ? row['Logout Time'].split(' ')[1] : 'N/A';
+                    
+                    return `
+                        <div class="record-card">
+                            <div class="record-header">
+                                <div>
+                                    <div class="record-user">${row['User']}</div>
+                                    <div class="record-date">${dateUSA}</div>
+                                </div>
+                                <div class="record-time-badge">${row['Work Time']}</div>
+                            </div>
+                            <div class="record-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Login Time</div>
+                                    <div class="detail-value">${loginTime}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Logout Time</div>
+                                    <div class="detail-value">${logoutTime}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Work Hours</div>
+                                    <div class="detail-value">${workHours.toFixed(2)}h</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            userFilterEl.addEventListener('change', applyFilters);
+            dateFilterEl.addEventListener('change', applyFilters);
+            hoursFilterEl.addEventListener('change', applyFilters);
+            
+            // Initial render
+            renderRecords(validData, '', '', 0);
+            
+            // Render charts
+            setTimeout(() => {
+                const ctxUser = document.getElementById('userChart').getContext('2d');
+                new Chart(ctxUser, {
+                    type: 'bar',
+                    data: {
+                        labels: users,
+                        datasets: [{
+                            label: 'Work Hours',
+                            data: userTotals,
+                            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: true }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+                
+                const ctxDate = document.getElementById('dateChart').getContext('2d');
+                new Chart(ctxDate, {
+                    type: 'line',
+                    data: {
+                        labels: datesUSA,
+                        datasets: [{
+                            label: 'Total Work Hours',
+                            data: dateTotals,
+                            borderColor: 'rgba(118, 75, 162, 1)',
+                            backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: true }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }, 0);
+        }
+        
+        // Load sample data on startup
+        Papa.parse(sampleData, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                csvData = results.data;
+                renderDashboard();
+            }
+        });
+    </script>
+</body>
+</html>
